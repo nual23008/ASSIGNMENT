@@ -1,0 +1,56 @@
+BÁO CÁO BÀI TẬP TUẦN 6: QUẢN LÝ FILE BẰNG DANH SÁCH LIÊN KẾT ĐƠN
+I. Phân tích sơ bộ giải thuật
+Bài toán yêu cầu quản lý danh sách các file trong một thư mục bằng cấu trúc Danh sách liên kết đơn (Singly Linked List). Đặc điểm quan trọng nhất của danh sách này là các phần tử (node) phải luôn được duy trì trạng thái sắp xếp theo trật tự thời gian (từ cũ nhất đến mới nhất).
+
+Để giải quyết, ta cần thực hiện các bài toán cơ sở sau:
+    Thiết kế cấu trúc dữ liệu: Xây dựng các struct lồng nhau để lưu thông tin ngày tháng, thông tin file và cấu trúc node của danh sách liên kết.
+    Bài toán chèn có thứ tự (Insert Sorted): Khi copy một file mới vào, thay vì chèn vào đầu hay cuối danh sách một cách ngẫu nhiên, ta phải duyệt danh sách để tìm đúng vị trí giao thời (giữa file cũ hơn và file mới hơn) để chèn vào.
+    Bài toán duyệt và cộng dồn (Traverse & Sum): Duyệt qua toàn bộ danh sách từ đầu đến cuối để tính tổng dung lượng các file.
+    Bài toán tìm kiếm và xóa phần tử cực trị (Find Min & Delete): Liên tục tìm kiếm phần tử có dung lượng nhỏ nhất và gỡ nó khỏi danh sách cho đến khi tổng dung lượng đạt thỏa mãn điều kiện <= 32GB.
+
+II. Mô tả thuộc tính và hàm cần thực thi
+1. Mô tả thuộc tính (Cấu trúc dữ liệu)
+    date (Thời gian): Gồm 3 thuộc tính nguyên (int): day, month, year.
+    file (Thông tin tệp):
+    name: Chuỗi ký tự (mảng char) lưu tên file.
+    size: Số nguyên (int) lưu dung lượng file. Quy ước tính bằng đơn vị Megabyte (MB) để tránh lỗi tràn số nguyên (Integer Overflow) khi biểu diễn dung lượng lớn.
+    timestamp: Kiểu date lưu thời gian tạo/sửa đổi file.
+    node (Mắt xích liên kết):
+    data: Kiểu file lưu trữ toàn bộ dữ liệu của tệp.
+    next: Con trỏ trỏ đến node tiếp theo trong danh sách.
+
+2. Mô tả các hàm cần thực thi
+    Notes(node** head): Khởi tạo danh sách rỗng.
+    create_node(...): Cấp phát bộ nhớ động (malloc) cho một file mới và gán dữ liệu.
+    insert_file(node** orig_file, node** selected_file): Hàm chèn một hoặc nhiều file vào danh sách gốc đảm bảo đúng vị trí thời gian.
+    size_compute(node* file): Hàm tính và trả về tổng kích thước các file đang có.
+    Add_to_USB(node** file): Hàm xử lý nghiệp vụ lọc dung lượng cho USB (xóa file nhỏ nhất nếu vượt quá 32GB).
+
+III. Phân tích giải thuật chi tiết
+1. Giải thuật chèn file theo trật tự thời gian
+    Đầu vào: Con trỏ trỏ đến đầu danh sách gốc (orig_file) và file cần chèn (q).
+
+    Các bước thực hiện:
+        - Khởi tạo 2 con trỏ p = *orig_file và prev = NULL để duyệt danh sách.
+        - Dùng vòng lặp while duyệt qua từng node p. So sánh timestamp của q và p. Quy tắc so sánh ưu tiên: Năm -> Tháng -> Ngày.
+        - Nếu thời gian của q < thời gian của p (nghĩa là q cũ hơn p), vòng lặp dừng lại. Vị trí cần chèn chính là ngay trước p (sau prev).
+        - Thực hiện nối con trỏ:
+            + Nếu prev == NULL (tức q là cũ nhất), chèn q vào đầu danh sách: q->next = *orig_file; *orig_file = q;
+            + Nếu không, chèn vào giữa: prev->next = q; q->next = p;
+
+2. Giải thuật tính tổng kích thước
+    Đầu vào: Con trỏ đầu danh sách (head).
+    Các bước thực hiện: Khởi tạo biến total_size = 0. Dùng vòng lặp while duyệt từ đầu đến cuối danh sách (cho đến khi node hiện tại là NULL). Ở mỗi vòng lặp, cộng dồn total_size += current_node->data.size. Trả về total_size.
+
+3. Giải thuật loại bỏ file nhỏ nhất để sao lưu USB 32GB
+    Giới hạn: 32GB tương đương với biến hằng số USB_STORAGE = 32768 (MB).
+
+    Các bước thực hiện:
+        - Tính tổng dung lượng hiện tại bằng hàm size_compute.
+        - Sử dụng vòng lặp while (total_size > 32768):
+        - Khởi tạo min_node = head và min_size = head->data.size.
+        - Duyệt qua toàn bộ danh sách để tìm ra node có size nhỏ nhất. (Cần lưu lại cả node đứng liền trước nó min_prev để phục vụ thao tác xóa).
+        - Thực hiện xóa min_node khỏi danh sách: min_prev->next = min_node->next (hoặc dời head nếu node bị xóa nằm ở đầu).
+        - Trừ min_size khỏi total_size.
+        - Giải phóng bộ nhớ free(min_node).
+        - Lặp lại cho đến khi total_size <= 32768.
